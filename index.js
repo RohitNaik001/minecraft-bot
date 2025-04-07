@@ -8,7 +8,7 @@ function startBot(username, movementInterval) {
     host: "Rohhh01.aternos.me",
     port: 32006,
     username,
-    version: "1.21.4",
+    version: "1.21.5",
   });
 
   bot.on("spawn", () => {
