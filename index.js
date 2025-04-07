@@ -6,6 +6,7 @@ const SERVER_HOST = "Rohhh01.aternos.me";
 const SERVER_PORT = 32006;
 const VERSION = "1.21.5";
 
+const botNames = ["Rohit3695", "Manoj345690"];
 const bots = {
   Rohit3695: null,
   Manoj345690: null,
@@ -24,7 +25,6 @@ function createBot(username) {
   bot.on("spawn", () => {
     console.log(`✅ ${username} joined the server`);
 
-    // Movement loop
     const moveInterval = setInterval(() => {
       const directions = ["forward", "back", "left", "right"];
       const direction = directions[Math.floor(Math.random() * directions.length)];
@@ -55,7 +55,7 @@ function createBot(username) {
 function removeBot(username) {
   const bot = bots[username];
   if (bot) {
-    console.log(`🚪 Kicking ${username} from the server`);
+    console.log(`🚪 Removing ${username}`);
     bot.quit();
     bots[username] = null;
   }
@@ -70,18 +70,21 @@ function checkPlayerCount() {
   });
 
   checkBot.once("spawn", () => {
-    const playerCount = Object.keys(checkBot.players).length;
+    const playerCount = Object.keys(checkBot.players).length - 1; // exclude checker
     console.log(`👥 Players online: ${playerCount}`);
 
-    if (playerCount <= 1) {
-      if (!bots.Rohit3695) createBot("Rohit3695");
-      if (!bots.Manoj345690) createBot("Manoj345690");
-    } else {
-      removeBot("Rohit3695");
-      removeBot("Manoj345690");
+    // Remove all bots first
+    botNames.forEach(removeBot);
+
+    if (playerCount === 0) {
+      createBot("Rohit3695");
+      setTimeout(() => createBot("Manoj345690"), 3000);
+    } else if (playerCount === 1) {
+      const randomBot = botNames[Math.floor(Math.random() * botNames.length)];
+      createBot(randomBot);
     }
 
-    setTimeout(() => checkBot.quit(), 3000); // Disconnect checker bot
+    setTimeout(() => checkBot.quit(), 3000);
   });
 
   checkBot.on("error", (err) => {
@@ -89,12 +92,10 @@ function checkPlayerCount() {
   });
 }
 
-// Repeat player check every 30 seconds
+// Run checker
+checkPlayerCount();
 setInterval(checkPlayerCount, 30000);
 
-// Initial check
-checkPlayerCount();
-
-// Keep-alive server
-app.get("/", (req, res) => res.send("🤖 Smart bot manager running"));
+// Keep-alive web service
+app.get("/", (req, res) => res.send("🤖 Bot manager with random logic running"));
 app.listen(3000, () => console.log("✅ Keep-alive web server running"));
