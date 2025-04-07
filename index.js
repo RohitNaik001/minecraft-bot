@@ -94,7 +94,7 @@ function checkPlayerCount() {
 
 // Run checker
 checkPlayerCount();
-setInterval(checkPlayerCount, 30000);
+setInterval(checkPlayerCount, 10000);
 
 // Keep-alive web service
 app.get("/", (req, res) => res.send("🤖 Bot manager with random logic running"));
