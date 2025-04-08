@@ -1,87 +1,76 @@
 const mineflayer = require("mineflayer");
-const { pathfinder, Movements, goals } = require("mineflayer-pathfinder");
-const { GoalNear } = goals;
 const express = require("express");
 const app = express();
-const vec3 = require("vec3");
 
-// Aternos Server Config
-const HOST = "Rohhh01.aternos.me";
-const PORT = 32006;
-const VERSION = "1.21.5";
+let rohitBot = null;
+let manojBot = null;
 
-// Store bots
-let bots = {};
-
-function startBot(name) {
+function createBot(username, movementInterval) {
   const bot = mineflayer.createBot({
-    host: HOST,
-    port: PORT,
-    username: name,
-    version: VERSION,
+    host: "Rohhh01.aternos.me",
+    port: 32006,
+    username,
+    version: "1.21.5",
   });
 
-  bot.loadPlugin(pathfinder);
+  bot.on("spawn", () => {
+    console.log(`✅ ${username} joined the server`);
 
-  bot.once("spawn", () => {
-    console.log(`✅ ${name} joined the server`);
-
-    const mcData = require("minecraft-data")(bot.version);
-    const defaultMove = new Movements(bot, mcData);
-    bot.pathfinder.setMovements(defaultMove);
-
-    // Wander movement
+    // Movement loop
     setInterval(() => {
-      const dx = Math.floor(Math.random() * 10) - 5;
-      const dz = Math.floor(Math.random() * 10) - 5;
-      const goal = new GoalNear(
-        bot.entity.position.x + dx,
-        bot.entity.position.y,
-        bot.entity.position.z + dz,
-        1
-      );
-      bot.pathfinder.setGoal(goal);
-    }, 15000);
-  });
+      const directions = ["forward", "back", "left", "right"];
+      const dir = directions[Math.floor(Math.random() * directions.length)];
+      bot.setControlState(dir, true);
+      bot.setControlState("jump", true);
+      setTimeout(() => {
+        bot.setControlState(dir, false);
+        bot.setControlState("jump", false);
+      }, 1500);
+    }, movementInterval);
 
-  // Handle player join/leave
-  bot.on("playerJoined", () => checkPlayers(bot));
-  bot.on("playerLeft", () => checkPlayers(bot));
+    // Monitor players
+    setInterval(() => {
+      const onlinePlayers = Object.keys(bot.players).filter(p => !p.toLowerCase().includes("bot"));
+      const realPlayers = onlinePlayers.filter(p => p !== "" && !["rohit3695", "manoj345690"].includes(p.toLowerCase()));
+
+      if (realPlayers.length === 0) {
+        // No real players: ensure both bots online
+        if (!manojBot) {
+          console.log("👥 No players online, starting Manoj345690");
+          manojBot = createBot("Manoj345690", 12000);
+        }
+      } else {
+        // Real players present: keep only one bot
+        if (manojBot) {
+          console.log("👥 Real player(s) detected. Disconnecting Manoj345690");
+          manojBot.quit();
+          manojBot = null;
+        }
+      }
+    }, 10000); // check every 10 sec
+  });
 
   bot.on("end", () => {
-    console.log(`❌ ${name} disconnected.`);
-    bots[name] = null;
+    console.log(`❌ ${username} disconnected. Reconnecting...`);
+    if (username === "Rohit3695") {
+      setTimeout(() => {
+        rohitBot = createBot("Rohit3695", movementInterval);
+      }, 5000);
+    } else if (username === "Manoj345690") {
+      manojBot = null;
+    }
   });
 
-  bot.on("error", (err) => {
-    console.log(`⚠️ ${name} error:`, err.message);
+  bot.on("error", err => {
+    console.log(`⚠️ ${username} error:`, err.message);
   });
 
-  bots[name] = bot;
+  return bot;
 }
 
-// Checks if both bots are needed
-function checkPlayers(bot) {
-  const online = Object.values(bot.players)
-    .filter((p) => p && p.username && !["Ravikumar257", "DDsCraft001"].includes(p.username));
+// Start Rohit bot on startup
+rohitBot = createBot("Rohit3695", 10000);
 
-  if (online.length >= 1) {
-    if (bots["DDsCraft001"]) {
-      console.log("Real player joined, disconnecting second bot...");
-      bots["DDsCraft001"].quit();
-      bots["DDsCraft001"] = null;
-    }
-  } else {
-    if (!bots["DDsCraft001"]) {
-      console.log("No real players online, reconnecting second bot...");
-      startBot("DDsCraft001");
-    }
-  }
-}
-
-// Start main bot
-startBot("Ravikumar257");
-
-// Web server for uptime
-app.get("/", (req, res) => res.send("Bots active!"));
+// Keep-alive web server
+app.get("/", (req, res) => res.send("🤖 Bot manager running"));
 app.listen(3000, () => console.log("✅ Keep-alive web server running"));
